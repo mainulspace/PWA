@@ -1,6 +1,12 @@
+// Update cache version from service worker URL
 var CACHE_VERSION = new URL(location).searchParams.get('VER');
 var CACHE_STATIC_NAME = 'static-v' + CACHE_VERSION;
 var CACHE_DYNAMIC_NAME = 'dynamic-v' + CACHE_VERSION;
+// Update cache version by daily using date
+var today = new Date();
+var version = today.getDate();
+var CACHE_STATIC_NAME = 'static-v' + version;
+var CACHE_DYNAMIC_NAME = 'dynamic-v' + version;
 var EXCLUDE_URL_CACHING = ['/amp', '/wp-includes', '/wp-admin', '/manifest.json', '/robots.txt', '/wp-login.php', '/service-worker.js', '/.well-known/*'];
 var arrayLength = EXCLUDE_URL_CACHING.length;
 var STATIC_FILES = [
