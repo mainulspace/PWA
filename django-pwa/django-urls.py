@@ -1,0 +1,6 @@
+path('service-worker.js', (TemplateView.as_view(template_name="app/service-worker.js", content_type='application/javascript', )), name='service-worker.js'),
+path('OneSignalSDKUpdaterWorker.js', (TemplateView.as_view(template_name="app/OneSignalSDKUpdaterWorker.js", content_type='application/javascript', )), name='OneSignalSDKUpdaterWorker.js'),
+path('OneSignalSDKWorker.js', (TemplateView.as_view(template_name="app/OneSignalSDKWorker.js", content_type='application/javascript', )), name='OneSignalSDKWorker.js'),
+path('OneSignalSDKUpdaterWorkerLocal.js', (TemplateView.as_view(template_name="app/OneSignalSDKUpdaterWorkerLocal.js", content_type='application/javascript', )), name='OneSignalSDKUpdaterWorkerLocal.js'),
+path('OneSignalSDKWorkerLocal.js', (TemplateView.as_view(template_name="app/OneSignalSDKWorkerLocal.js", content_type='application/javascript', )), name='OneSignalSDKWorkerLocal.js'),
+path('.well-known/assetlinks.json', (TemplateView.as_view(template_name="app/.well-known/assetlinks.json", content_type='application/json', )), name='.well-known/assetlinks.json'),
