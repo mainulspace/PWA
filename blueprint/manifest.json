@@ -55,6 +55,20 @@
       "icons": [{ "src": "/pwa-images/shortcuts/web-design-development.png", "sizes": "192x192" }]
     }
   ],
+  "screenshots": [
+    {
+      "src": "/pwa-images/screenshots/screenshot1.png",
+      "sizes": "640x480",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/pwa-images/screenshots/screenshot2.png",
+      "sizes": "320x480",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait-primary",
