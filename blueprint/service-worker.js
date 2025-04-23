@@ -1,89 +1,102 @@
-var CACHE_STATIC_NAME = 'static-v2';
-var CACHE_DYNAMIC_NAME = 'dynamic-v2';
-var INCLUDES_PWA_VERSION = '?v=2.1';
-var EXCLUDE_URL_CACHING = [];
+// ------------ CONFIGURATION ------------
+const today               = new Date().toISOString().split('T')[0];
+const CACHE_STATIC_NAME   = `static-${today}`;
+const CACHE_DYNAMIC_NAME  = `dynamic-${today}`;
 
-var STATIC_FILES = [];
+const EXCLUDE_URL_CACHING = [
+    '/api/',
+    '/cart',
+    '/checkout',
+    '/login',
+    '/manifest.json',
+    '/robots.txt',
+    '/service-worker.js'
+];
 
-self. addEventListener('install', function(event) {
-    console.log('[Service Worker] Installing Service Worker ....', event);
+// Your “app shell” – update with your actual files
+const STATIC_FILES = [
+    '/',
+    '/offline.php',
+    '/styles/main.css',
+    '/scripts/app.js',
+    '/pwa-images/icons/app-icon-192x192.png'
+];
+
+// ------------ INSTALL ------------
+self.addEventListener('install', event => {
+    console.log('[SW] Installing…');
     self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_STATIC_NAME)
-            .then(function(cache) {
-                console.log('[Service Worker] Precaching App Shell....');
-                cache.addAll(STATIC_FILES);
-            })
+            .then(cache => cache.addAll(STATIC_FILES))
     );
 });
 
-self.addEventListener('activate', function(event) {
-    console.log('[Service Worker] Activating Service Worker ....', event);
+// ------------ ACTIVATE ------------
+self.addEventListener('activate', event => {
+    console.log('[SW] Activating…');
     event.waitUntil(
-        caches.keys()
-            .then(function(keyList) {
-                return Promise.all(keyList.map(function(key){
-                    if(key !== CACHE_STATIC_NAME && key !== CACHE_DYNAMIC_NAME) {
-                        console.log('[Service Worker] Removing old cache.', key);
-                        return caches.delete(key);
-                    }
-                }));
-            })
+        caches.keys().then(keys =>
+            Promise.all(
+                keys
+                    .filter(key => key !== CACHE_STATIC_NAME && key !== CACHE_DYNAMIC_NAME)
+                    .map(oldKey => caches.delete(oldKey))
+            )
+        )
     );
     return self.clients.claim();
 });
 
+// ------------ FETCH ------------
+self.addEventListener('fetch', event => {
+    const { request } = event;
+    const url = request.url;
 
+    // Only handle GET over HTTP(s)
+    if (request.method !== 'GET' || !url.startsWith('http')) return;
 
-self.addEventListener('fetch', function(event) {
+    // Skip excluded URLs
+    if (EXCLUDE_URL_CACHING.some(pattern => url.includes(pattern))) return;
+
+    // Stale-while-revalidate for your app shell
+    if (STATIC_FILES.some(path => url.endsWith(path))) {
+        event.respondWith(
+            caches.open(CACHE_STATIC_NAME).then(cache =>
+                cache.match(request).then(cached => {
+                    const networkFetch = fetch(request).then(networkRes => {
+                        cache.put(request, networkRes.clone());
+                        return networkRes;
+                    });
+                    return cached || networkFetch;
+                })
+            )
+        );
+        return;
+    }
+
+    // Cache-first, then network (dynamic caching)
     event.respondWith(
-        caches.match(event.request)
-            .then(function(response) {
-                // Cache hit - return response
-                if (response) {
-                    console.log('From cache: ' + response);
-                    return response;
-                }
-
-                return fetch(event.request).then(
-                    function(response) {
-                        console.log('From network:' + response.status);
-
-                        // Check if we received a valid response
-                        if(!response || response.status !== 200 || response.type !== 'basic') {
-                            return response;
-                        }
-
-                        // Doesn't cache following urls
-                        var arrayLength = EXCLUDE_URL_CACHING.length;
-                        for (var i = 0; i < arrayLength; i++) {
-                            if ( event.request.url.indexOf( EXCLUDE_URL_CACHING[i] ) !== -1) {
-                                return response;
-                            }
-                        }
-                        
-                         if(event.request.method === 'POST' || event.request.method === 'PUT' || event.request.method === 'PATCH' || event.request.method === 'DELETE'){
-                            return response;
-                        }
-
-                        // IMPORTANT: Clone the response. A response is a stream
-                        // and because we want the browser to consume the response
-                        // as well as the cache consuming the response, we need
-                        // to clone it so we have two streams.
-                        var responseToCache = response.clone();
-
-                        caches.open(CACHE_DYNAMIC_NAME)
-                            .then(function(cache) {
-                                console.info('Cached URL:', event.request.url);
-                                cache.put(event.request, responseToCache);
-                            });
-
-                        return response;
+        caches.match(request).then(cached => {
+            if (cached) {
+                return cached;
+            }
+            return fetch(request)
+                .then(networkRes => {
+                    // Only cache valid, basic responses
+                    if (networkRes && networkRes.status === 200 && networkRes.type === 'basic') {
+                        const clone = networkRes.clone();
+                        caches.open(CACHE_DYNAMIC_NAME).then(cache => {
+                            cache.put(request, clone);
+                        });
                     }
-                );
-            }).catch(function() {
-            // If both fail, show a generic fallback:
-            return caches.match('/offline.php');
+                    return networkRes;
+                })
+                .catch(() => {
+                    // On navigation failure, serve fallback
+                    if (request.mode === 'navigate') {
+                        return caches.match('/offline.php');
+                    }
+                });
         })
     );
 });
